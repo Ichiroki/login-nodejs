@@ -60,6 +60,12 @@
     const name = form.name.value
     const email = form.email.value
     const password = form.password.value
+    const confPassword = form.confPassword.value
+
+    if(password !== confPassword) {
+      confPasError.textContent = "Password tidak sesuai"
+      return
+    }
 
     try {
       const res = await fetch('/signup', { 

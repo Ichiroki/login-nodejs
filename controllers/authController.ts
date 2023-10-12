@@ -1,7 +1,11 @@
 // import User from '../models/User'
 import jwt from 'jsonwebtoken'
-import { Prisma, PrismaClient } from '@prisma/client'
-import { body, validationResult } from 'express-validator'
+import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcrypt'
+import crypto from 'node:crypto'
+import { UserValidate } from '../validation/userRequest'
+import flash from 'connect-flash'
+
 
 const prisma = new PrismaClient()
 
@@ -50,10 +54,17 @@ const handleErrors = (err) => {
 // create json web token
 const maxAge = 3 * 24 * 60 * 60;
 const createToken = (id) => {
-  return jwt.sign({ id }, 'jwt', {
+  return jwt.sign({ id }, 'access', {
     expiresIn: maxAge
   });
 };
+
+const hashPassword = async (password: string) => {
+  const salt = await bcrypt.genSalt()
+  const hash = await bcrypt.hash(password, salt)
+
+  return hash
+}
 
 // controller actions
 export const signup_get = (req, res) => {
@@ -69,34 +80,28 @@ export const login_get = (req, res) => {
 }
 
 export const signup_post = async (req, res) => {
-  const {name, email, password, confPassword} = req.body
+  const {name, email, password} = req.body
 
-  const error = validationResult(req);
+  const pw = await hashPassword(password)
+  const validationError = UserValidate.parse({name, email, password})
 
-  if(!error.isEmpty()) {
-    return res.status(400).json({errors: error.array()})
-  }
-
-  if(password !== confPassword) {
-    return res.status(400).json({errors: error.array()})
+  if(validationError) {
+    return res.render('signup')
   }
 
   try {
     const user = await prisma.users.create({
       data: {
-        id: crypto.randomUUID(),
+        id: crypto.randomUUID().toString(),
         name,
         email,
-        password,
+        password: pw,
       },
     })
     res.json(user)
 
-    // const userId = '39dac1e3749e6034f6a61ddd0eff7d6c1c1c412a512ac3d0de477d788ff993de'
-    // const token = createToken(userId)
-
-    // res.cookie('jwt', token, { httpOnly: true, maxAge: maxAge * 1000 })
-    // res.status(201).json({ user:userId });
+    req.flash('success', 'Registration Successfully');
+    res.redirect('/login')
   } catch(err) {
     console.log('Error ', err);
   }
@@ -106,10 +111,21 @@ export const login_post = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // const user = await User.login(email, password);
-    // const token = createToken(user._id);
-    // res.cookie('jwt', token, { httpOnly: true, maxAge: maxAge * 1000 });
-    // res.status(200).json({ user: user._id });
+    const user = prisma.users.findUnique({
+      where: {
+        email,
+        password
+      }
+    })
+    const passwordMatch = await bcrypt.compare(password, user['password'])
+
+    if(user) {
+      if(passwordMatch) {
+        const token = jwt.sign(user['id'], 'access', {expiresIn : '1h'})
+        res.json({token})
+      }
+      return res.status(401).json({ error: 'Email atau password salah' })
+    }
   } 
   catch (err) {
     const errors = handleErrors(err);
@@ -119,7 +135,7 @@ export const login_post = async (req, res) => {
 }
 
 export const logout_get = (req, res) => {
-  res.cookie('jwt', '', { maxAge: 1 });
+  res.cookie('access', '', { maxAge: 1 });
   res.redirect('/');
 }
 

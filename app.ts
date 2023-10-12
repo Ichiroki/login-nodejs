@@ -1,9 +1,18 @@
-import express, { Request, Response } from 'express'
+import express from 'express'
 import authRoutes from './routes/authRoutes'
 import cookieParser from 'cookie-parser'
+import session from 'express-session'
+import flash from 'connect-flash'
 // import { requireAuth, checkUser } from './middleware/authMiddleware'
 
 const App = express()
+
+App.use(session({
+   secret: 'access',
+   saveUnitialized: true,
+   resave: true
+}))
+App.use(flash())
 
 // middleware
 App.use(express.static('public'))
@@ -18,8 +27,8 @@ App.set('view engine', 'ejs')
 
 // routes
 App.get('*')
-App.get('/', (req : Request, res : Response) => res.render('home', { active: 'Home' }))
-App.get('/menu', (req : Request, res : Response) => res.render('menu', {active: 'Menu'}))
+App.get('/', (req, res) => res.render('home', { active: 'Home' }))
+App.get('/menu', (req, res) => res.render('menu', {active: 'Menu'}))
 App.use(authRoutes)
 
 App.listen(3000, () => {

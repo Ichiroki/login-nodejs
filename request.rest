@@ -1,9 +1,10 @@
 ### 
-POST http://localhost:3000/signup
+POST http://127.0.0.1:3000/signup
 Content-Type: application/json
 
 {
-   "id" : "57917736-16b6-4cfb-9d0d-e5b239bf0d81",
-   "email" : "rizqiawanf@gmail.com",
-   "password" : "12345678"
+   "name": "Rin Tohsaka",
+   "email" : "rin@gmail.com",
+   "password" : "12345678",
+   "confPassword": "12345678"
 }
